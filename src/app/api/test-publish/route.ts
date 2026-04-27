@@ -55,9 +55,19 @@ export async function POST(req: NextRequest) {
       raw: result.data,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    const detail: Record<string, unknown> = {};
+    if (err && typeof err === "object") {
+      const e = err as Record<string, unknown>;
+      detail.message = e.message;
+      detail.code = e.code;
+      detail.data = e.data;
+      detail.errors = e.errors;
+    } else {
+      detail.message = String(err);
+    }
+    console.error("[test-publish] X API error:", detail);
     return NextResponse.json(
-      { ok: false, error: "publish_failed", detail: message },
+      { ok: false, error: "publish_failed", detail },
       { status: 502 },
     );
   }
