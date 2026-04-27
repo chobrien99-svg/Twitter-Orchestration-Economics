@@ -142,7 +142,11 @@ create index publish_attempts_draft_idx on publish_attempts (draft_id, attempt_n
 
 -- ---------------------------------------------------------------------
 -- 9. budget_ledger — every billable API call, estimated and actual cost.
---    Daily cap query: sum estimated_cost_usd where occurred_at::date = today.
+--    Daily cap query (range form, uses the btree index below):
+--      select coalesce(sum(estimated_cost_usd), 0)
+--      from budget_ledger
+--      where occurred_at >= date_trunc('day', now())
+--        and occurred_at <  date_trunc('day', now()) + interval '1 day';
 -- ---------------------------------------------------------------------
 create table budget_ledger (
   id                  uuid primary key default gen_random_uuid(),
@@ -155,7 +159,7 @@ create table budget_ledger (
   notes               text
 );
 
-create index budget_ledger_day_idx on budget_ledger ((occurred_at::date));
+create index budget_ledger_occurred_at_idx on budget_ledger (occurred_at);
 
 -- ---------------------------------------------------------------------
 -- Reference: cost_estimates — seeded from X Usage plan pricing.
