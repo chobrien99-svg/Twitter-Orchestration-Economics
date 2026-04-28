@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
+import { runPublisher } from "@/lib/publisher";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * Vercel cron entry point for the publisher worker.
+ * Vercel cron entry point for the publisher worker. Runs every minute.
  *
- * Vercel automatically attaches an `Authorization: Bearer <CRON_SECRET>`
- * header when CRON_SECRET is set in project env. We verify it here so that
- * external callers cannot trigger publishing.
- *
- * Current state: stub. Once the publisher logic is wired, this will:
- *   1. Check today's spend against DAILY_BUDGET_USD.
- *   2. Select x_post_drafts where status='approved' and scheduled_at <= now().
- *   3. For each, call the X API, log to publish_attempts and budget_ledger,
- *      and update status to 'posted' or 'failed'.
+ * When CRON_SECRET is set, requires `Authorization: Bearer <CRON_SECRET>`
+ * (Vercel attaches this automatically to scheduled invocations). When unset,
+ * the route is open — fine for local development, not for production.
  */
 export async function GET(req: NextRequest) {
   const secret = env.cronSecret();
@@ -26,12 +21,15 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    stub: true,
-    dryRun: env.dryRun(),
-    dailyBudgetUsd: env.dailyBudgetUsd(),
-    note: "Scheduler stub. Publisher logic wires in after the test-publish round-trip is verified.",
-    timestamp: new Date().toISOString(),
-  });
+  try {
+    const summary = await runPublisher();
+    return NextResponse.json(summary);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[scheduler] runPublisher threw:", err);
+    return NextResponse.json(
+      { ok: false, error: "publisher_failed", detail: message },
+      { status: 500 },
+    );
+  }
 }
