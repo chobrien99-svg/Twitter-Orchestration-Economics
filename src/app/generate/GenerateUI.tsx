@@ -103,8 +103,13 @@ export function GenerateUI() {
               <div className="draft-meta">
                 <span className="badge draft">{KIND_LABEL[d.kind] ?? d.kind}</span>
                 <span>{d.text.length} chars</span>
-                {d.overLimit && (
-                  <span className="badge failed">over 280 — edit before approving</span>
+                {d.lengthState === "long" && (
+                  <span className="badge" title="Over 280 — X will collapse under 'Show more' (needs X Premium)">
+                    long post
+                  </span>
+                )}
+                {d.lengthState === "over" && (
+                  <span className="badge failed">over 25k — edit before approving</span>
                 )}
               </div>
               <div className="draft-body">{d.text}</div>

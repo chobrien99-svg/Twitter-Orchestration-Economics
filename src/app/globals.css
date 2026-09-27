@@ -297,6 +297,10 @@ textarea:focus {
   color: var(--text-muted);
   margin-top: -8px;
 }
+.char-count.long {
+  color: var(--warning);
+  font-weight: 600;
+}
 .char-count.over {
   color: var(--danger);
   font-weight: 600;

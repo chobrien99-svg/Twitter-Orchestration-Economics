@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { createDraftAction } from "../actions";
 import type { ContentSource } from "@/lib/queries";
+import { classifyLength, POST_HARD_LIMIT, POST_SOFT_LIMIT } from "@/lib/post-limits";
 
 function localInputDefault(): string {
   const d = new Date();
@@ -17,8 +18,9 @@ export function ComposeForm({ sources }: { sources: ContentSource[] }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const overLimit = text.length > 280;
-  const remaining = 280 - text.length;
+  const state = classifyLength(text.length);
+  const overHard = state === "over";
+  const long = state === "long";
 
   const defaultScheduled = useMemo(localInputDefault, []);
 
@@ -50,8 +52,10 @@ export function ComposeForm({ sources }: { sources: ContentSource[] }) {
           placeholder="What are we posting?"
           required
         />
-        <div className={`char-count ${overLimit ? "over" : ""}`}>
-          {remaining} left
+        <div className={`char-count ${state === "over" ? "over" : state === "long" ? "long" : ""}`}>
+          {text.length} / {POST_SOFT_LIMIT}
+          {long && ` — long post (X will collapse under "Show more"; needs X Premium)`}
+          {overHard && ` — over ${POST_HARD_LIMIT.toLocaleString()} char hard cap`}
         </div>
       </div>
 
@@ -94,7 +98,7 @@ export function ComposeForm({ sources }: { sources: ContentSource[] }) {
         <button
           className="btn primary"
           type="submit"
-          disabled={pending || overLimit || text.trim().length === 0}
+          disabled={pending || overHard || text.trim().length === 0}
         >
           {pending ? "Saving…" : "Save"}
         </button>

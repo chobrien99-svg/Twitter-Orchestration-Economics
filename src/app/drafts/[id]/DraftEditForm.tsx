@@ -10,6 +10,7 @@ import {
   promoteDraftToVoiceSampleAction,
 } from "../../actions";
 import type { ContentSource, DraftRow } from "@/lib/queries";
+import { classifyLength, POST_HARD_LIMIT, POST_SOFT_LIMIT } from "@/lib/post-limits";
 
 function toLocalInput(iso: string | null): string {
   if (!iso) return "";
@@ -30,8 +31,9 @@ export function DraftEditForm({
   const [promotedAt, setPromotedAt] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const remaining = 280 - text.length;
-  const overLimit = text.length > 280;
+  const state = classifyLength(text.length);
+  const overHard = state === "over";
+  const long = state === "long";
 
   const readOnly =
     draft.status === "posted" || draft.status === "publishing";
@@ -81,8 +83,10 @@ export function DraftEditForm({
             readOnly={readOnly}
             required
           />
-          <div className={`char-count ${overLimit ? "over" : ""}`}>
-            {remaining} left
+          <div className={`char-count ${state === "over" ? "over" : state === "long" ? "long" : ""}`}>
+            {text.length} / {POST_SOFT_LIMIT}
+            {long && ` — long post (X will collapse under "Show more"; needs X Premium)`}
+            {overHard && ` — over ${POST_HARD_LIMIT.toLocaleString()} char hard cap`}
           </div>
         </div>
 
@@ -138,7 +142,7 @@ export function DraftEditForm({
 
         {!readOnly && (
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn primary" type="submit" disabled={pending || overLimit}>
+            <button className="btn primary" type="submit" disabled={pending || overHard}>
               {pending ? "Saving…" : "Save changes"}
             </button>
           </div>
