@@ -6,6 +6,7 @@ import { getServiceSupabase } from "@/lib/supabase";
 import { postContainsUrl } from "@/lib/x-client";
 import { fetchArticle, type FetchedArticle } from "@/lib/article-fetcher";
 import { generateDrafts, type DraftVariant } from "@/lib/draft-generator";
+import { classifyLength, type LengthState } from "@/lib/post-limits";
 
 export type GenerateResult =
   | {
@@ -22,7 +23,7 @@ export type GenerateResult =
         kind: DraftVariant["kind"];
         text: string;
         reasoning: string;
-        overLimit: boolean;
+        lengthState: LengthState;
       }>;
       usage: {
         inputTokens: number;
@@ -121,11 +122,11 @@ async function generateAndPersistDrafts(
     kind: DraftVariant["kind"];
     text: string;
     reasoning: string;
-    overLimit: boolean;
+    lengthState: LengthState;
   }> = [];
 
   for (const v of generation.variants) {
-    const overLimit = v.text.length > 280;
+    const lengthState = classifyLength(v.text.length);
     const { data, error } = await supabase
       .from("x_post_drafts")
       .insert({
@@ -146,7 +147,7 @@ async function generateAndPersistDrafts(
       kind: v.kind,
       text: v.text,
       reasoning: v.reasoning,
-      overLimit,
+      lengthState,
     });
   }
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServiceSupabase } from "@/lib/supabase";
 import { postContainsUrl } from "@/lib/x-client";
+import { POST_HARD_LIMIT } from "@/lib/post-limits";
 
 type Ok = { ok: true; id?: string };
 type Fail = { ok: false; error: string };
@@ -34,7 +35,9 @@ export async function createDraftAction(formData: FormData): Promise<void> {
   const status = trimmed(formData.get("status")) as "draft" | "approved";
 
   if (!text) throw new Error("Text is required.");
-  if (text.length > 280) throw new Error(`Text is ${text.length} chars; max 280.`);
+  if (text.length > POST_HARD_LIMIT) {
+    throw new Error(`Text is ${text.length} chars; max ${POST_HARD_LIMIT}.`);
+  }
   if (status !== "draft" && status !== "approved") {
     throw new Error(`Invalid status: ${status}`);
   }
@@ -77,7 +80,9 @@ export async function updateDraftAction(formData: FormData): Promise<void> {
 
   if (!id) throw new Error("Missing id.");
   if (!text) throw new Error("Text is required.");
-  if (text.length > 280) throw new Error(`Text is ${text.length} chars; max 280.`);
+  if (text.length > POST_HARD_LIMIT) {
+    throw new Error(`Text is ${text.length} chars; max ${POST_HARD_LIMIT}.`);
+  }
 
   const supabase = getServiceSupabase();
   const { error } = await supabase

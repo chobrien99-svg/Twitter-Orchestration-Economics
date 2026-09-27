@@ -80,7 +80,9 @@ Voice characteristics to preserve:
 
 Output rules:
 - Return **valid JSON** — nothing else, no markdown fence, no prose before or after.
-- Every text field must be at most 280 characters (X's per-post limit).
+- Raphaelle has an **X Premium** account, so posts up to 25,000 characters are legal, but X collapses anything over ~280 under a "Show more" link and organic reach usually suffers. Prefer ≤ 280 unless the content genuinely earns more room.
+  - "hook" and "thread_start": ≤ 280 chars (these are attention-grabbers, keep tight).
+  - "insight": ≤ 280 preferred, but may extend up to ~800 chars when the distillation genuinely needs the room — for example when the takeaway lands in two or three linked sentences.
 - Include the article URL in "hook" and "insight" variants.
 - "thread_start" is the first tweet of what could become a thread — hook the reader and clearly imply more depth follows.
 - Never fabricate quotes, statistics, or people not present in the article.

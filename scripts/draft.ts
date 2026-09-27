@@ -11,6 +11,7 @@
 import { randomUUID } from "node:crypto";
 import { getServiceSupabase } from "../src/lib/supabase";
 import { postContainsUrl } from "../src/lib/x-client";
+import { POST_HARD_LIMIT, POST_SOFT_LIMIT } from "../src/lib/post-limits";
 
 type Args = {
   text: string;
@@ -35,9 +36,14 @@ function parseArgs(argv: string[]): Args {
     console.error("Usage: npm run draft -- \"tweet text\" [--in 5m|2h|1d] [--at ISO] [--status draft|approved]");
     process.exit(1);
   }
-  if (text.length > 280) {
-    console.error(`Text is ${text.length} chars; max 280.`);
+  if (text.length > POST_HARD_LIMIT) {
+    console.error(`Text is ${text.length} chars; max ${POST_HARD_LIMIT} (X Premium).`);
     process.exit(1);
+  }
+  if (text.length > POST_SOFT_LIMIT) {
+    console.warn(
+      `⚠  ${text.length} chars: X will collapse this under "Show more" (requires X Premium).`,
+    );
   }
 
   let scheduledAt = new Date();
