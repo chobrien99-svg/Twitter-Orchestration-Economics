@@ -32,3 +32,6 @@ next-env.d.ts
 # supabase local
 supabase/.branches
 supabase/.temp
+
+# raw analytics exports (personal engagement data — kept out of git)
+data/*.csv

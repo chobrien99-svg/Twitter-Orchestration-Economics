@@ -1,23 +1,26 @@
+import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Twitter Orchestration Economics",
-  description: "X publishing pipeline with budget-aware scheduling.",
+  title: "Orchestration Economics — X pipeline",
+  description: "Compose, review, and schedule X posts.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          margin: 0,
-          padding: "2rem",
-          maxWidth: 720,
-        }}
-      >
-        {children}
+      <body>
+        <nav className="nav">
+          <Link href="/" className="nav-brand">
+            Orchestration Economics
+          </Link>
+          <Link href="/">Queue</Link>
+          <Link href="/compose">Compose</Link>
+          <Link href="/voice-samples">Voice</Link>
+        </nav>
+        <div className="container">{children}</div>
       </body>
     </html>
   );
