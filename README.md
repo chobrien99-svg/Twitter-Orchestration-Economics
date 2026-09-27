@@ -124,12 +124,25 @@ The Next.js app is the primary interface. Routes:
 
 - `/` — dashboard. Draft queue by state, today&apos;s spend vs cap, live/dry-run indicator.
 - `/compose` — write a new post, pick source, schedule for future, save as draft or approve.
+- `/generate` — paste a Decoding Discontinuity or Orchestration Economics article URL,
+  Claude reads the article and returns three drafts (hook, insight, thread starter)
+  matched against the seeded voice samples. All three land as unapproved drafts.
 - `/drafts/[id]` — edit, approve/unapprove, delete, view the live tweet if posted.
 - `/voice-samples` — view, add, deactivate, or delete voice samples.
 
 Every page requires the Basic-Auth login. The cron worker keeps ticking
 in the background — anything marked `approved` will be published on the
 next tick if it&apos;s past its `scheduled_at`.
+
+### LLM draft generator — what it costs
+
+Each `/generate` call is one Anthropic API request. Roughly: input ≈ 3–8k
+tokens (voice samples + article body), output ≈ 500–1500 tokens (3
+variants + reasoning). At Claude Opus 5 rates that&apos;s **≈ $0.05–0.10
+per generation**, dropping to ≈ $0.02–0.03 on subsequent calls within
+five minutes as prompt caching serves the voice-sample prefix from
+cache. Set `ANTHROPIC_MODEL=claude-sonnet-5` in `.env.local` /
+Vercel env if you want to trade quality for ~60% lower cost.
 
 ## Scheduling drafts (local CLI, still supported)
 
@@ -205,12 +218,15 @@ resets at UTC midnight).
 1. ~~Test-publish round-trip~~ ✅
 2. ~~Publisher worker + draft CLI~~ ✅
 3. ~~Web UI (compose, review, approve, history) + voice-samples seeded~~ ✅
-4. **LLM draft generator** — Claude turns a Substack article URL into 3
-   variants in Raphaelle&apos;s voice, calibrated with the seeded samples.
+4. ~~LLM draft generator~~ ✅
 5. **Tweet doctor** — Claude scores an in-progress draft (hook, clarity, length).
 6. **Threads** — sequence x_post_drafts by `position`, set `reply_to_post_id`.
 7. **Media upload** — chunked init/append/finalize → attach to draft.
 8. **Substack RSS ingestion** — auto-fire the generator on new articles.
+9. **Manifesto chunking + retrieval** — index orchestration-economics.com so
+   drafts can cite the specific manifesto section relevant to a topic.
+10. **X monitoring + opportunity scoring** — Track B: listen for high-signal
+    conversations touching her expertise, propose reply/quote-tweet drafts.
 
 ## Repository layout
 

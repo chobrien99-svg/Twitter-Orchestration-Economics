@@ -18,6 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </Link>
           <Link href="/">Queue</Link>
           <Link href="/compose">Compose</Link>
+          <Link href="/generate">Generate</Link>
           <Link href="/voice-samples">Voice</Link>
         </nav>
         <div className="container">{children}</div>
