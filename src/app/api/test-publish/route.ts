@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import { getXClient, postOperationName } from "@/lib/x-client";
+import { POST_HARD_LIMIT } from "@/lib/post-limits";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const Body = z.object({
-  text: z.string().min(1).max(280),
+  text: z.string().min(1).max(POST_HARD_LIMIT),
 });
 
 /**
