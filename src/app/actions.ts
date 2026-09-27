@@ -182,3 +182,49 @@ export async function deleteVoiceSampleAction(formData: FormData): Promise<void>
   if (error) throw new Error(error.message);
   revalidatePath("/voice-samples");
 }
+
+// ---------------- draft → voice sample promotion ----------------
+
+/**
+ * Promote a draft's current text to a voice_sample. If the draft has been
+ * posted, we also carry over the permalink so the sample is anchored to a
+ * real post. Duplicate texts are allowed — user decides what qualifies.
+ */
+export async function promoteDraftToVoiceSampleAction(formData: FormData): Promise<void> {
+  const id = trimmed(formData.get("id"));
+  if (!id) throw new Error("Missing id.");
+
+  const supabase = getServiceSupabase();
+  const { data: draft, error: draftErr } = await supabase
+    .from("x_post_drafts")
+    .select(
+      "body, content_source_id, status, published_post:published_posts(x_post_id, permalink, posted_at)",
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (draftErr) throw new Error(draftErr.message);
+  if (!draft) throw new Error("Draft not found.");
+  if (!draft.body?.trim()) throw new Error("Draft is empty.");
+
+  const published = (draft.published_post as
+    | { x_post_id: string; permalink: string | null; posted_at: string | null }
+    | { x_post_id: string; permalink: string | null; posted_at: string | null }[]
+    | null) ?? null;
+  const publishedRow = Array.isArray(published) ? published[0] ?? null : published;
+
+  const { error } = await supabase.from("voice_samples").insert({
+    text: draft.body,
+    content_source_id: draft.content_source_id,
+    x_post_id: publishedRow?.x_post_id ?? null,
+    post_url: publishedRow?.permalink ?? null,
+    posted_at: publishedRow?.posted_at ?? null,
+    notes:
+      draft.status === "posted"
+        ? "Promoted from posted draft"
+        : `Promoted from ${draft.status} draft`,
+    is_active: true,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath("/voice-samples");
+  revalidatePath(`/drafts/${id}`);
+}

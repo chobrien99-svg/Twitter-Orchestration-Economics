@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { generateFromUrlAction, type GenerateResult } from "./actions";
+import {
+  generateFromUrlAction,
+  regenerateFromSourceItemAction,
+  type GenerateResult,
+} from "./actions";
 
 const KIND_LABEL: Record<string, string> = {
   hook: "Hook post",
@@ -15,15 +19,28 @@ export function GenerateUI() {
   const [result, setResult] = useState<GenerateResult | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const runGenerate = (formData: FormData) => {
+    startTransition(async () => {
+      const r = await generateFromUrlAction(formData);
+      setResult(r);
+    });
+  };
+
+  const runRegenerate = () => {
+    if (!result?.ok) return;
+    const sourceItemId = result.sourceItemId;
+    startTransition(async () => {
+      const r = await regenerateFromSourceItemAction(sourceItemId);
+      setResult(r);
+    });
+  };
+
   return (
     <>
       <form
         action={(formData: FormData) => {
           setResult(null);
-          startTransition(async () => {
-            const r = await generateFromUrlAction(formData);
-            setResult(r);
-          });
+          runGenerate(formData);
         }}
         style={{ marginBottom: 20 }}
       >
@@ -48,7 +65,9 @@ export function GenerateUI() {
           type="submit"
           disabled={pending || !url.trim()}
         >
-          {pending ? "Reading & drafting… (this takes 15–45s)" : "Generate 3 drafts"}
+          {pending && !result
+            ? "Reading & drafting… (this takes 15–45s)"
+            : "Generate 3 drafts"}
         </button>
       </form>
 
@@ -102,9 +121,32 @@ export function GenerateUI() {
             </div>
           ))}
 
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginTop: 12,
+            }}
+          >
+            <button
+              type="button"
+              className="btn"
+              onClick={runRegenerate}
+              disabled={pending}
+            >
+              {pending ? "Regenerating…" : "Regenerate 3 more drafts"}
+            </button>
+            <span className="meta-line">
+              Skips the fetch; reuses the parsed article. Previous drafts stay in
+              the queue — nothing lost.
+            </span>
+          </div>
+
           <div className="meta-line" style={{ marginTop: 16 }}>
-            All three saved as unapproved drafts. Open each one to edit, then
-            approve — the publisher won&apos;t touch them until you do.
+            All variants saved as unapproved drafts. Open each to edit; the
+            publisher won&apos;t touch them until you approve.
           </div>
         </>
       )}

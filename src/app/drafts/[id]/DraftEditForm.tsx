@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import {
   updateDraftAction,
   approveDraftAction,
   unapproveDraftAction,
   deleteDraftAction,
+  promoteDraftToVoiceSampleAction,
 } from "../../actions";
 import type { ContentSource, DraftRow } from "@/lib/queries";
 
@@ -25,6 +27,7 @@ export function DraftEditForm({
 }) {
   const [text, setText] = useState(draft.body);
   const [error, setError] = useState<string | null>(null);
+  const [promotedAt, setPromotedAt] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   const remaining = 280 - text.length;
@@ -47,6 +50,20 @@ export function DraftEditForm({
       }
     });
   };
+
+  const runPromote = (fd: FormData) => {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await promoteDraftToVoiceSampleAction(fd);
+        setPromotedAt(Date.now());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    });
+  };
+
+  const justPromoted = promotedAt !== null && Date.now() - promotedAt < 60_000;
 
   return (
     <>
@@ -162,6 +179,41 @@ export function DraftEditForm({
           </form>
         </div>
       )}
+
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          alignItems: "center",
+          marginTop: readOnly ? 20 : 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <form action={runPromote}>
+          <input type="hidden" name="id" value={draft.id} />
+          <button className="btn" type="submit" disabled={pending || !text.trim()}>
+            Save as voice sample
+          </button>
+        </form>
+        {justPromoted && (
+          <>
+            <span
+              className="badge posted"
+              style={{ padding: "4px 10px", fontSize: 12 }}
+            >
+              Saved
+            </span>
+            <Link href="/voice-samples" className="meta-line">
+              view in Voice ↗
+            </Link>
+          </>
+        )}
+        <span className="meta-line">
+          {draft.status === "posted"
+            ? "Anchors this post as a voice reference — informs future article-to-drafts generations."
+            : "Promotes the current text into the voice_samples calibration set."}
+        </span>
+      </div>
 
       <div style={{ marginTop: 24 }} className="meta-line">
         Created {new Date(draft.created_at).toLocaleString()} · updated{" "}
