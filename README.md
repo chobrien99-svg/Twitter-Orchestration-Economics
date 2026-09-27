@@ -13,12 +13,16 @@ Stack: Next.js 15 + TypeScript on Vercel, Supabase Postgres, `twitter-api-v2`.
 - A publisher worker at `GET /api/cron/scheduler` — claims due drafts, posts
   to X, logs attempts and cost, retries up to 3 times on transient errors,
   and skips work when the daily budget is reached.
-- A draft-insert CLI: `npm run draft -- "text" [--in 5m]`.
-- A run-once CLI for local testing: `npm run publish-now`.
+- A web UI (compose, review, edit, approve, schedule, history), gated by
+  HTTP Basic Auth for a single shared team login.
+- A `voice_samples` table plus a CSV importer for seeding it from
+  Raphaelle's X analytics export.
+- CLI helpers: `npm run draft`, `npm run publish-now`,
+  `npm run import-voice-samples`.
 - Server-side X and Supabase client wrappers.
 
-It does **not** yet contain: thread sequencing, media upload, Substack
-ingestion, draft generation (LLM), or the approval UI.
+It does **not** yet contain: LLM-driven draft generation, thread
+sequencing, media upload, or Substack RSS ingestion.
 
 ## First-run setup
 
@@ -86,7 +90,48 @@ When you are ready to spend real money:
 3. Hit `POST /api/test-publish` with a short body.
 4. Verify the returned `xPostId` resolves at the `permalink` returned.
 
-## Scheduling drafts (local)
+### 6. Apply the UI schema and set app-auth creds
+
+Run `supabase/migrations/0002_ui_schema.sql` in the Supabase SQL Editor.
+Then add these to `.env.local` and to Vercel's Environment Variables:
+
+```
+APP_USERNAME=<pick a shared username>
+APP_PASSWORD=<pick a strong shared password>
+```
+
+The Basic-Auth middleware gates every route except `/api/cron/*` (which
+uses `CRON_SECRET`) and `/api/test-publish` (kept open for CLI smoke
+tests). Share the username / password with anyone who should reach the
+approval UI.
+
+### 7. Seed voice samples
+
+Drop your X analytics content export into `data/x_content_analytics.csv`
+(matches the standard columns from X&apos;s dashboard export), then:
+
+```bash
+npm run import-voice-samples             # inserts top 15 by engagements
+npm run import-voice-samples -- --top 25 # tune how many
+npm run import-voice-samples -- --dry-run
+```
+
+Re-running is safe — rows are upsert-keyed on `x_post_id`.
+
+## Web UI
+
+The Next.js app is the primary interface. Routes:
+
+- `/` — dashboard. Draft queue by state, today&apos;s spend vs cap, live/dry-run indicator.
+- `/compose` — write a new post, pick source, schedule for future, save as draft or approve.
+- `/drafts/[id]` — edit, approve/unapprove, delete, view the live tweet if posted.
+- `/voice-samples` — view, add, deactivate, or delete voice samples.
+
+Every page requires the Basic-Auth login. The cron worker keeps ticking
+in the background — anything marked `approved` will be published on the
+next tick if it&apos;s past its `scheduled_at`.
+
+## Scheduling drafts (local CLI, still supported)
 
 ```bash
 # Insert an approved draft scheduled for now (publishes on next cron tick).
@@ -159,12 +204,13 @@ resets at UTC midnight).
 
 1. ~~Test-publish round-trip~~ ✅
 2. ~~Publisher worker + draft CLI~~ ✅
-3. **Tweet doctor** — Claude scores a draft (hook, clarity, length) before approval.
-4. **Voice samples + article-to-drafts generator** — Claude turns a Substack article into 3 variants in your voice.
-5. **Threads** — sequence x_post_drafts by `position`, set `reply_to_post_id`.
-6. **Media upload** — chunked init/append/finalize → attach to draft.
-7. **Substack RSS ingestion** — auto-fire the generator on new articles.
-8. **Approval UI** — Next.js page with Supabase Auth (single shared login).
+3. ~~Web UI (compose, review, approve, history) + voice-samples seeded~~ ✅
+4. **LLM draft generator** — Claude turns a Substack article URL into 3
+   variants in Raphaelle&apos;s voice, calibrated with the seeded samples.
+5. **Tweet doctor** — Claude scores an in-progress draft (hook, clarity, length).
+6. **Threads** — sequence x_post_drafts by `position`, set `reply_to_post_id`.
+7. **Media upload** — chunked init/append/finalize → attach to draft.
+8. **Substack RSS ingestion** — auto-fire the generator on new articles.
 
 ## Repository layout
 
