@@ -7,6 +7,7 @@ import { postContainsUrl } from "@/lib/x-client";
 import { fetchArticle, type FetchedArticle } from "@/lib/article-fetcher";
 import { generateDrafts, type DraftVariant } from "@/lib/draft-generator";
 import { classifyLength, type LengthState } from "@/lib/post-limits";
+import { unslopText } from "@/lib/unslop";
 
 export type GenerateResult =
   | {
@@ -24,6 +25,9 @@ export type GenerateResult =
         text: string;
         reasoning: string;
         lengthState: LengthState;
+        slopScore: number;
+        unslopChanges: string[];
+        originalText: string | null;
       }>;
       usage: {
         inputTokens: number;
@@ -123,15 +127,25 @@ async function generateAndPersistDrafts(
     text: string;
     reasoning: string;
     lengthState: LengthState;
+    slopScore: number;
+    unslopChanges: string[];
+    originalText: string | null;
   }> = [];
 
   for (const v of generation.variants) {
-    const lengthState = classifyLength(v.text.length);
+    // Second-pass unslop filter: strips AI tells, returns cleaned text +
+    // 0–100 slop score + a short list of what changed. Short-circuits
+    // via UNSLOP_PASS=false.
+    const unslopped = await unslopText(v.text);
+    const finalText = unslopped.cleaned;
+    const originalText = unslopped.skipped || finalText === v.text ? null : v.text;
+    const lengthState = classifyLength(finalText.length);
+
     const { data, error } = await supabase
       .from("x_post_drafts")
       .insert({
-        body: v.text,
-        contains_url: postContainsUrl(v.text),
+        body: finalText,
+        contains_url: postContainsUrl(finalText),
         status: "draft",
         scheduled_at: null,
         content_source_id: contentSourceId,
@@ -145,9 +159,12 @@ async function generateAndPersistDrafts(
     inserted.push({
       id: data.id,
       kind: v.kind,
-      text: v.text,
+      text: finalText,
       reasoning: v.reasoning,
       lengthState,
+      slopScore: unslopped.slopScore,
+      unslopChanges: unslopped.changes,
+      originalText,
     });
   }
 
