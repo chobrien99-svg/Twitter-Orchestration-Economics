@@ -103,6 +103,14 @@ export function GenerateUI() {
               <div className="draft-meta">
                 <span className="badge draft">{KIND_LABEL[d.kind] ?? d.kind}</span>
                 <span>{d.text.length} chars</span>
+                <span
+                  className={`badge ${
+                    d.slopScore >= 85 ? "posted" : d.slopScore >= 65 ? "scheduled" : "failed"
+                  }`}
+                  title="Slop score: 100 = clean human writing, 70-89 = minor AI tells, 50-69 = obvious AI patterns, 0-49 = full AI output"
+                >
+                  voice {d.slopScore}
+                </span>
                 {d.lengthState === "long" && (
                   <span className="badge" title="Over 280 — X will collapse under 'Show more' (needs X Premium)">
                     long post
@@ -117,6 +125,19 @@ export function GenerateUI() {
                 <div className="meta-line" style={{ fontStyle: "italic" }}>
                   {d.reasoning}
                 </div>
+              )}
+              {d.unslopChanges.length > 0 && (
+                <details className="meta-line">
+                  <summary style={{ cursor: "pointer" }}>
+                    unslop pass fixed {d.unslopChanges.length} pattern
+                    {d.unslopChanges.length === 1 ? "" : "s"}
+                  </summary>
+                  <ul style={{ margin: "6px 0 0 0", paddingLeft: 18 }}>
+                    {d.unslopChanges.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                </details>
               )}
               <div className="draft-actions">
                 <Link href={`/drafts/${d.id}`} className="btn small primary">
