@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { DraftRow } from "@/lib/queries";
+import { DeleteDraftButton } from "./DeleteDraftButton";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -51,6 +52,7 @@ export function DraftRowView({ draft }: { draft: DraftRow }) {
         <Link href={`/drafts/${draft.id}`} className="btn small">
           Open
         </Link>
+        <DeleteDraftButton draftId={draft.id} status={draft.status} />
       </div>
     </div>
   );
